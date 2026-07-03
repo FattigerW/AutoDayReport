@@ -1,0 +1,31 @@
+{
+  "name": "autodayreport",
+  "version": "1.0.0",
+  "description": "Automated daily work report tool with Git commit collection, LLM generation, and browser automation",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "schedule": "node dist/scheduler.js",
+    "dev": "tsx src/index.ts"
+  },
+  "keywords": [
+    "daily-report",
+    "automation",
+    "puppeteer"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "ddddocr-node": "^2.3.0",
+    "node-cron": "^3.0.3",
+    "puppeteer": "^24.0.0",
+    "sharp": "^0.33"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/node-cron": "^3.0.11",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

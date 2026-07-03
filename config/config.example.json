@@ -1,0 +1,52 @@
+{
+  "network": {
+    "checkUrl": "",
+    "secoclientPath": "C:\\Program Files (x86)\\SecoClient\\SecoClient.exe",
+    "connectTimeoutMs": 120000,
+    "pollIntervalMs": 3000
+  },
+  "login": {
+    "url": "",
+    "username": "your_username",
+    "password": "your_password",
+    "captchaMaxRetries": 5,
+    "captchaDebug": false,
+    "captchaOcrEngine": "auto",
+    "captchaOcrMode": "default",
+    "selectors": {
+      "captchaInput": "input[placeholder*=\"验证码\"]"
+    }
+  },
+  "report": {
+    "pageUrl": "",
+    "departmentName": "",
+    "project1": "",
+    "project2": "",
+    "productLine": "",
+    "workStatus": "",
+    "workTime": "",
+    "workLocation": "",
+    "overwriteExisting": false,
+    "submitAfterFill": true
+  },
+  "git": {
+    "scanRoot": "D:\\program",
+    "maxDepth": 5,
+    "author": ""
+  },
+  "qwen": {
+    "apiUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+    "apiKey": "sk-xxx",
+    "model": "qwen-plus"
+  },
+  "schedule": {
+    "enabled": true,
+    "runTime": "18:00",
+    "reportDate": "today",
+    "timezone": "Asia/Shanghai"
+  },
+  "puppeteer": {
+    "headless": true,
+    "defaultTimeout": 30000
+  }
+}
