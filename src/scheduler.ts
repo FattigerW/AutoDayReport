@@ -1,33 +1,8 @@
 import { format, subDays } from "date-fns";
 import * as cron from "node-cron";
-import * as fs from "fs";
-import * as path from "path";
 import { loadConfig, ScheduleConfig } from "./config";
+import { initJobLogger, jobLog } from "./job-logger";
 import { runOnce } from "./run-job";
-
-const LOG_DIR = path.join(__dirname, "..", "logs");
-const LOG_FILE = path.join(LOG_DIR, "scheduler.log");
-
-let logTimezone = "Asia/Shanghai";
-
-function ensureLogDir(): void {
-  if (!fs.existsSync(LOG_DIR)) {
-    fs.mkdirSync(LOG_DIR, { recursive: true });
-  }
-}
-
-function formatLogTimestamp(date: Date, timezone: string): string {
-  const base = date.toLocaleString("sv-SE", { timeZone: timezone, hour12: false });
-  const ms = String(date.getMilliseconds()).padStart(3, "0");
-  return `${base}.${ms}`;
-}
-
-function log(message: string): void {
-  const line = `[${formatLogTimestamp(new Date(), logTimezone)}] ${message}`;
-  console.log(line);
-  ensureLogDir();
-  fs.appendFileSync(LOG_FILE, line + "\n", "utf-8");
-}
 
 function parseRunTime(runTime: string): { hour: number; minute: number } {
   const match = runTime.match(/^(\d{1,2}):(\d{2})$/);
@@ -73,8 +48,6 @@ function getNextRunDescription(runTime: string, timezone: string): string {
 }
 
 async function main(): Promise<void> {
-  ensureLogDir();
-
   const config = loadConfig();
   const schedule = config.schedule;
 
@@ -85,10 +58,10 @@ async function main(): Promise<void> {
   }
 
   const timezone = schedule.timezone ?? "Asia/Shanghai";
-  logTimezone = timezone;
+  initJobLogger({ timezone });
 
   if (!schedule.enabled) {
-    log("schedule.enabled is false — scheduler exiting.");
+    jobLog("schedule.enabled is false — scheduler exiting.");
     return;
   }
 
@@ -101,11 +74,11 @@ async function main(): Promise<void> {
   }
   const cronExpr = runTimeToCron(schedule.runTime);
 
-  log(`AutoDayReport scheduler started.`);
-  log(`  runTime: ${schedule.runTime} (cron: ${cronExpr})`);
-  log(`  timezone: ${timezone}`);
-  log(`  reportDate: ${schedule.reportDate}`);
-  log(`  next run (approx): ${getNextRunDescription(schedule.runTime, timezone)}`);
+  jobLog(`AutoDayReport scheduler started.`);
+  jobLog(`  runTime: ${schedule.runTime} (cron: ${cronExpr})`);
+  jobLog(`  timezone: ${timezone}`);
+  jobLog(`  reportDate: ${schedule.reportDate}`);
+  jobLog(`  next run (approx): ${getNextRunDescription(schedule.runTime, timezone)}`);
 
   if (!cron.validate(cronExpr)) {
     throw new Error(`Invalid cron expression derived from runTime: ${cronExpr}`);
@@ -115,23 +88,26 @@ async function main(): Promise<void> {
     cronExpr,
     async () => {
       const date = resolveReportDate(schedule.reportDate);
-      log(`Scheduled run triggered. reportDate=${schedule.reportDate} → date=${date}`);
+      jobLog(`Scheduled run triggered. reportDate=${schedule.reportDate} → date=${date}`);
       try {
         await runOnce({ date, dryRun: false, fillOnly: false });
-        log(`Scheduled run completed for ${date}.`);
+        jobLog(`Scheduled run completed for ${date}.`);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        log(`Scheduled run failed: ${msg}`);
+        jobLog(`Scheduled run failed: ${msg}`);
+        if (err instanceof Error && err.stack) {
+          jobLog(err.stack);
+        }
       }
     },
     { timezone }
   );
 
-  log("Scheduler is running. Press Ctrl+C to stop.");
+  jobLog("Scheduler is running. Press Ctrl+C to stop.");
 }
 
 main().catch((err) => {
   const msg = err instanceof Error ? err.message : String(err);
-  log(`Scheduler fatal error: ${msg}`);
+  jobLog(`Scheduler fatal error: ${msg}`);
   process.exit(1);
 });

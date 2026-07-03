@@ -43,6 +43,8 @@ export interface GitConfig {
   scanRoot: string;
   maxDepth: number;
   author: string;
+  /** 仓库目录名 → 日报中显示的中文项目名 */
+  repoDisplayNames?: Record<string, string>;
 }
 
 export interface QwenConfig {

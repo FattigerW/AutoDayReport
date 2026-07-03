@@ -5,6 +5,7 @@ interface CliArgs {
   date: string;
   dryRun: boolean;
   fillOnly: boolean;
+  overwrite: boolean;
 }
 
 function parseArgs(): CliArgs {
@@ -12,6 +13,7 @@ function parseArgs(): CliArgs {
   let date = format(new Date(), "yyyy-MM-dd");
   let dryRun = false;
   let fillOnly = false;
+  let overwrite = false;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--date" && args[i + 1]) {
@@ -21,15 +23,17 @@ function parseArgs(): CliArgs {
       dryRun = true;
     } else if (args[i] === "--fill-only") {
       fillOnly = true;
+    } else if (args[i] === "--overwrite") {
+      overwrite = true;
     }
   }
 
-  return { date, dryRun, fillOnly };
+  return { date, dryRun, fillOnly, overwrite };
 }
 
 async function main(): Promise<void> {
-  const { date, dryRun, fillOnly } = parseArgs();
-  await runOnce({ date, dryRun, fillOnly });
+  const { date, dryRun, fillOnly, overwrite } = parseArgs();
+  await runOnce({ date, dryRun, fillOnly, overwrite });
 }
 
 main().catch((err) => {

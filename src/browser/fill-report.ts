@@ -5,6 +5,7 @@ import { Frame, Page } from "puppeteer";
 import { GeneratedReport } from "../llm";
 import { formatReportContent } from "../report-formatter";
 import { PuppeteerConfig, ReportConfig } from "../config";
+import { jobLog } from "../job-logger";
 
 type PageContext = Page | Frame;
 
@@ -442,12 +443,14 @@ export async function fillReport(
 
     const alreadyFilled = await isDialogContentFilled(reportCtx);
     if (alreadyFilled && !reportConfig.overwriteExisting) {
-      console.log("Report already filled for this date. Skipping (overwriteExisting=false).");
+      jobLog(
+        "当天报工已存在，跳过填写（overwriteExisting=false）。新生成的日报未写入系统。可加 --overwrite 或设置 report.overwriteExisting=true 覆盖。"
+      );
       return;
     }
 
     if (alreadyFilled && reportConfig.overwriteExisting) {
-      console.log("Report already filled. Overwriting per config.");
+      jobLog("Report already filled. Overwriting per config.");
     }
 
     const content = formatReportContent(generatedReport);
@@ -471,9 +474,9 @@ export async function fillReport(
       console.log("Clicking page submit (提交)...");
       const submitClicked = await clickPageButton(page, "提交");
       if (!submitClicked) {
-        console.warn('Could not find "提交" button. Report may need manual submission.');
+        jobLog('Could not find "提交" button. Report may need manual submission.');
       } else {
-        console.log("Report submitted.");
+        jobLog("Report submitted.");
       }
     }
 

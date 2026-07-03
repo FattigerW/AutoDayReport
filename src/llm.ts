@@ -3,7 +3,8 @@ import * as path from "path";
 import { format } from "date-fns";
 import { getReportsDir, QwenConfig, ReportConfig } from "./config";
 import { CommitInfo } from "./git-collector";
-import { formatReportPrompt, parseReportResponse } from "./report-formatter";
+import { jobLog } from "./job-logger";
+import { formatReportPrompt, parseReportResponse, resolveRepoDisplayName } from "./report-formatter";
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 2000;
@@ -62,7 +63,7 @@ async function callQwenApi(
 
 function saveRawCommits(commits: CommitInfo[], targetDate: string): string {
   const reportsDir = getReportsDir();
-  const filePath = path.join(reportsDir, `${targetDate}.txt`);
+  const filePath = path.join(reportsDir, `${targetDate}-commits.txt`);
 
   const lines = commits.map(
     (c) => `[${c.repo}] ${c.hash} - ${c.message} (${c.author}, ${c.date})`
@@ -74,19 +75,23 @@ function saveRawCommits(commits: CommitInfo[], targetDate: string): string {
       : "No commits found for this date.";
 
   fs.writeFileSync(filePath, content, "utf-8");
-  console.log(`Saved raw commits to ${filePath}`);
+  jobLog(`Saved raw commits to ${filePath}`);
   return filePath;
 }
 
 function buildFallbackReport(
   reportConfig: ReportConfig,
   targetDate: string,
-  commits: CommitInfo[]
+  commits: CommitInfo[],
+  repoDisplayNames?: Record<string, string>
 ): GeneratedReport {
   const formattedDate = format(new Date(targetDate), "yyyy/MM/dd");
   const todayWork =
     commits.length > 0
-      ? commits.map((c, i) => `${i + 1}. [${c.repo}] ${c.message}`)
+      ? commits.map((c, i) => {
+          const name = resolveRepoDisplayName(c.repo, repoDisplayNames);
+          return `${i + 1}. 【${name}】${c.message}`;
+        })
       : ["1. 日常开发与维护工作"];
 
   return {
@@ -111,40 +116,45 @@ export async function generateReport(
   qwenConfig: QwenConfig,
   reportConfig: ReportConfig,
   commits: CommitInfo[],
-  targetDate: string
+  targetDate: string,
+  repoDisplayNames?: Record<string, string>
 ): Promise<GeneratedReport> {
   const formattedDate = format(new Date(targetDate), "yyyy/MM/dd");
   const prompt = formatReportPrompt(
     reportConfig.departmentName,
     formattedDate,
-    commits
+    commits,
+    repoDisplayNames
   );
+
+  saveRawCommits(commits, targetDate);
 
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
       if (attempt > 0) {
-        console.log(`Retrying LLM generation (attempt ${attempt + 1})...`);
+        jobLog(`Retrying LLM generation (attempt ${attempt + 1})...`);
       } else {
-        console.log("Generating report with Qwen LLM...");
+        jobLog(`Generating report with LLM (${qwenConfig.model})...`);
       }
 
       const response = await callQwenApi(qwenConfig, prompt);
       const parsed = parseReportResponse(response, reportConfig.departmentName, formattedDate);
 
-      console.log("Report generated successfully.");
+      jobLog(
+        `LLM report generated: ${parsed.todayWork.length} today item(s), ${parsed.tomorrowPlan.length} tomorrow item(s).`
+      );
       return parsed;
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
-      console.error(`LLM generation failed: ${lastError.message}`);
+      jobLog(`LLM generation failed: ${lastError.message}`);
       if (attempt < MAX_RETRIES) {
         await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
       }
     }
   }
 
-  console.warn("LLM generation failed after retries. Saving raw commits and using fallback.");
-  saveRawCommits(commits, targetDate);
-  return buildFallbackReport(reportConfig, targetDate, commits);
+  jobLog("LLM failed after retries. Using fallback report from raw commits.");
+  return buildFallbackReport(reportConfig, targetDate, commits, repoDisplayNames);
 }

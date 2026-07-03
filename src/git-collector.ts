@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { promisify } from "util";
 import { GitConfig } from "./config";
+import { jobLog } from "./job-logger";
 
 const execFileAsync = promisify(execFile);
 
@@ -99,7 +100,9 @@ async function getCommitsForDate(
           message: messageParts.join("|"),
         };
       });
-  } catch {
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    jobLog(`  [git] failed to read log in ${path.basename(repoPath)}: ${msg}`);
     return [];
   }
 }
@@ -114,15 +117,16 @@ export async function collectCommits(
   const { scanRoot, maxDepth, author } = config;
 
   if (!fs.existsSync(scanRoot)) {
-    console.warn(`Git scan root does not exist: ${scanRoot}`);
+    jobLog(`Git scan root does not exist: ${scanRoot}`);
     return [];
   }
 
-  console.log(`Scanning for git repos in ${scanRoot} (maxDepth=${maxDepth})...`);
+  jobLog(`Git scan: root=${scanRoot}, maxDepth=${maxDepth}, author=${author || "(all)"}`);
   const repos = findGitRepos(scanRoot, maxDepth);
-  console.log(`Found ${repos.length} git repositories.`);
+  jobLog(`Git scan: found ${repos.length} repositories.`);
 
   const allCommits: CommitInfo[] = [];
+  const repoSummary: string[] = [];
 
   for (const repoPath of repos) {
     const commits = await getCommitsForDate(repoPath, targetDate, author);
@@ -138,11 +142,13 @@ export async function collectCommits(
       });
     }
 
-    if (commits.length > 0) {
-      console.log(`  ${repoName}: ${commits.length} commit(s)`);
+    repoSummary.push(`${repoName}: ${commits.length}`);
+    for (const commit of commits) {
+      jobLog(`  [commit] [${repoName}] ${commit.hash.slice(0, 8)} ${commit.message}`);
     }
   }
 
-  console.log(`Total commits collected: ${allCommits.length}`);
+  jobLog(`Git scan: total ${allCommits.length} commit(s) for ${targetDate}.`);
+  jobLog(`Git scan by repo: ${repoSummary.join(", ") || "(none)"}`);
   return allCommits;
 }

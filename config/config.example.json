@@ -32,7 +32,11 @@
   "git": {
     "scanRoot": "D:\\program",
     "maxDepth": 5,
-    "author": ""
+    "author": "",
+    "repoDisplayNames": {
+      "avatar5.0_asset_management_service": "资产管理服务",
+      "avatar5.0_dataassets_service": "数据资产服务"
+    }
   },
   "qwen": {
     "apiUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
