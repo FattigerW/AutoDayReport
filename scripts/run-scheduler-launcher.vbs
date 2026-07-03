@@ -2,5 +2,5 @@
 Option Explicit
 Dim shell
 Set shell = CreateObject("Wscript.Shell")
-shell.CurrentDirectory = "D:\program\AutoDayReport"
-shell.Run """C:\Program Files\nodejs\node.exe"" ""D:\program\AutoDayReport\dist\scheduler.js""", 0, True
+shell.CurrentDirectory = "D:\company\AutoDayReport"
+shell.Run """C:\Program Files\nodejs\node.exe"" ""D:\company\AutoDayReport\dist\scheduler.js""", 0, True

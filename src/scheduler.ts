@@ -8,14 +8,22 @@ import { runOnce } from "./run-job";
 const LOG_DIR = path.join(__dirname, "..", "logs");
 const LOG_FILE = path.join(LOG_DIR, "scheduler.log");
 
+let logTimezone = "Asia/Shanghai";
+
 function ensureLogDir(): void {
   if (!fs.existsSync(LOG_DIR)) {
     fs.mkdirSync(LOG_DIR, { recursive: true });
   }
 }
 
+function formatLogTimestamp(date: Date, timezone: string): string {
+  const base = date.toLocaleString("sv-SE", { timeZone: timezone, hour12: false });
+  const ms = String(date.getMilliseconds()).padStart(3, "0");
+  return `${base}.${ms}`;
+}
+
 function log(message: string): void {
-  const line = `[${new Date().toISOString()}] ${message}`;
+  const line = `[${formatLogTimestamp(new Date(), logTimezone)}] ${message}`;
   console.log(line);
   ensureLogDir();
   fs.appendFileSync(LOG_FILE, line + "\n", "utf-8");
@@ -76,6 +84,9 @@ async function main(): Promise<void> {
     );
   }
 
+  const timezone = schedule.timezone ?? "Asia/Shanghai";
+  logTimezone = timezone;
+
   if (!schedule.enabled) {
     log("schedule.enabled is false — scheduler exiting.");
     return;
@@ -88,8 +99,6 @@ async function main(): Promise<void> {
   if (schedule.reportDate !== "today" && schedule.reportDate !== "yesterday") {
     throw new Error(`Invalid schedule.reportDate "${schedule.reportDate}". Expected "today" or "yesterday".`);
   }
-
-  const timezone = schedule.timezone ?? "Asia/Shanghai";
   const cronExpr = runTimeToCron(schedule.runTime);
 
   log(`AutoDayReport scheduler started.`);
