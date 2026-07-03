@@ -3,4 +3,5 @@ dist/
 config/config.json
 reports/
 logs/
+scripts/run-scheduler-launcher.vbs
 *.log
